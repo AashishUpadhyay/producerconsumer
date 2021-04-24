@@ -25,4 +25,4 @@ def test_producer_fetchprojectandtasks():
 
 def test_pipeline_build_and_run():
     pipeline = Pipeline()
-    pipeline.build_and_run(10, 10)
+    pipeline.build_and_run(2, 10)
