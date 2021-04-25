@@ -1,6 +1,7 @@
 import Queue
 import random
 import threading
+import time
 
 MAX_QSIZE = 10  # max queue size
 BUF_SIZE = 100  # total number of iterations/items to process
@@ -12,6 +13,7 @@ class Producer:
 
     def run(self):
         for _ in range(self.buf_size):
+            # time.sleep(1) never completes when you uncomment this line
             self.queue.put(random.randint(0, 100))
 
 class Consumer:
