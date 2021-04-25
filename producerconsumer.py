@@ -4,49 +4,46 @@ import csv
 import threading
 
 class Producer:
-    def __init__(self, sourcequeue, targetqueue, sc):
-        self.sourcequeue = sourcequeue
-        self.targetqueue = targetqueue
-        self._sc = sc 
+    def __init__(self, source_queue, target_queue):
+        self.source_queue = source_queue
+        self.target_queue = target_queue
 
-    def fetchprojectandtasks(self, batch):
-        batchNo = batch[0]
-        batchSize = batch[1]
+    def fetch_project_and_tasks(self, batch):
+        batch_no = batch[0]
+        batch_size = batch[1]
         time.sleep(3)
-        start = (batchNo - 1) * batchSize
-        end = start + batchSize
+        start = (batch_no - 1) * batch_size
+        end = start + batch_size
 
         return [start, end]
 
     def run(self):
-        while not self.sourcequeue.empty():
-            batch = self.sourcequeue.get()
-            start, end = self.fetchprojectandtasks(batch)
+        while not self.source_queue.empty():
+            batch = self.source_queue.get()
+            start, end = self.fetch_project_and_tasks(batch)
             for i in range(start, end):
                 item = "Task + " + str(i)
-                self.targetqueue.put(item)
-
-        self._sc.completed = True     
+                self.target_queue.put(item)
         
 class Consumer:
-    def __init__(self, sourcequeue, sc):
-        self.sourcequeue = sourcequeue
+    def __init__(self, source_queue, sc):
+        self.source_queue = source_queue
         self._sc = sc 
 
-    def createcsv(self, filename):
-        outputcsvobject = open(filename, 'wb')
-        writer = csv.writer(outputcsvobject, dialect='excel')
+    def create_csv(self, file_name):
+        output_csv_object = open(file_name, 'wb')
+        writer = csv.writer(output_csv_object, dialect='excel')
         return writer
 
     def run(self):
-        curDate = time.strftime("%Y%m%d")
-        filename = 'output_'+curDate+'.csv'
-        writer = self.createcsv(filename)
+        cur_date = time.strftime("%Y%m%d")
+        file_name = 'output_'+cur_date+'.csv'
+        writer = self.create_csv(file_name)
 
         while True:
-            if self.sourcequeue.empty() and self._sc.completed:
+            if self.source_queue.empty() and self._sc.completed:
                 break
-            item = self.sourcequeue.get(True)
+            item = self.source_queue.get(True)
             writer.writerow([item])
             print(item + " processed")
 
@@ -62,30 +59,31 @@ class SynchronizationContext:
     def completed(dself, val):
         self._completed = val    
 
-class Pipeline:
+class Pipeline: 
 
     def build_and_run(self, pgcount, pgsize):
-        sourcequeue = self._build_projects_queue(pgcount, pgsize)
-        targetqueue = Queue.Queue()
+        source_queue = self._build_projects_queue(pgcount, pgsize)
+        target_queue = Queue.Queue()
 
         sc = SynchronizationContext()
 
-        producer = Producer(sourcequeue, targetqueue, sc)
+        producer = Producer(source_queue, target_queue)
         producer_thread = threading.Thread(target=producer.run)
 
-        consumer = Consumer(targetqueue, sc)
+        consumer = Consumer(target_queue, sc)
         consumer_thread = threading.Thread(target=consumer.run)
 
         producer_thread.start()
         consumer_thread.start()
 
         producer_thread.join()
+        sc.completed = True
         consumer_thread.join()
 
     def _build_projects_queue(self, pgcount, pgsize):
-        projectsBatchQueue = Queue.Queue()
+        projects_batch_queue = Queue.Queue()
 
         for i in range(1, pgcount+1):
-            projectsBatchQueue.put((i,pgsize))
+            projects_batch_queue.put((i,pgsize))
 
-        return projectsBatchQueue
+        return projects_batch_queue
